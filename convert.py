@@ -40,7 +40,7 @@ def convert_file(file_path, html_content):
         html_content = re.sub(r'<meta property="og:url" content=".*?"\s*/>', f'<meta property="og:url" content="{url}" />', html_content)
 
         # h2 タグの置換
-        content = re.sub(r'#h2\((.*?)\)', r'<h2 class="text-3xl font-bold text-gray-800 mb-4">\1</h2>', content, flags=re.UNICODE)
+        content = re.sub(r'#h2\((.*?)\)', r'<br><h2 class="text-3xl font-bold text-gray-800 mb-4">\1</h2><br>', content, flags=re.UNICODE)
 
         # text タグの置換
         content = re.sub(r'#text\s*(.*)', lambda x: '<p class="text-gray-700 mb-4">' + re.sub(r'<:>(.*?)<:>', r'<b class="font-bold text-blue-600">\1</b>', x.group(1), flags=re.UNICODE) + '</p>', content, flags=re.UNICODE)
