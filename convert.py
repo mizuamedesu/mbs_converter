@@ -39,26 +39,35 @@ def convert_file(file_path, html_content):
         url = f'https://mizuame.works/blog/{today.strftime("%Y-%m-%d")}/index.html'
         html_content = re.sub(r'<meta property="og:url" content=".*?"\s*/>', f'<meta property="og:url" content="{url}" />', html_content)
 
-        # h2 タグの置換
-        content = re.sub(r'#h2\((.*?)\)', r'<br><h2 class="text-3xl font-bold text-gray-800 mb-4">\1</h2><br>', content, flags=re.UNICODE)
+        # 各タグの処理を関数化
+        def process_tags(content):
+            # 全てのタグを識別
+            tags = re.findall(r'(#\w+(?:\(.*?\))?)(.*?)(?=#\w+|$)', content, re.DOTALL)
+            
+            for tag, text in tags:
+                if tag.startswith('#h2'):
+                    content = content.replace(f"{tag}{text}", f'<br><h2 class="text-3xl font-bold text-gray-800 mb-4">{tag[4:-1]}</h2><br>', 1)
+                elif tag.startswith('#text'):
+                    processed_text = re.sub(r'<:>(.*?)<:>', r'<b class="font-bold text-blue-600">\1</b>', text.strip())
+                    content = content.replace(f"{tag}{text}", f'<p class="text-gray-700 mb-4">{processed_text}</p>', 1)
+                elif tag.startswith('#code'):
+                    title, code = text.split('<:>', 1)
+                    content = content.replace(f"{tag}{text}", f'<div class="copyable mb-4"><p>{title.strip()}</p><pre><code>{code.strip()}</code></pre><button onclick="copyToClipboard(this)" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded">コピー</button></div>', 1)
+                elif tag.startswith('#img'):
+                    src, alt = text.strip().split('<:>')
+                    content = content.replace(f"{tag}{text}", f'<div class="image-container mb-4"><img src="{src}" alt="{alt}" class="responsive-image"></div>', 1)
+                elif tag.startswith('#strong'):
+                    title, body = text.strip().split('<:>')
+                    content = content.replace(f"{tag}{text}", f'<div class="note mb-4"><strong>{title}</strong> {body}</div>', 1)
 
-        # text タグの置換
-        content = re.sub(r'#text\s*(.*)', lambda x: '<p class="text-gray-700 mb-4">' + re.sub(r'<:>(.*?)<:>', r'<b class="font-bold text-blue-600">\1</b>', x.group(1), flags=re.UNICODE) + '</p>', content, flags=re.UNICODE)
+            # link タグの置換（タグの外にあるため、別途処理）
+            content = re.sub(r'<a>(.*?)<:>(.*?)<a>', r'<a href="\2" class="text-blue-600 hover:underline">\1</a>', content)
 
-        # link タグの置換
-        content = re.sub(r'<a>(.*?)<:>(.*?)<a>', r'<a href="\2" class="text-blue-600 hover:underline">\1</a>', content, flags=re.UNICODE)
-
-        # img タグの置換
-        content = re.sub(r'#img\s*(.*?)<:>(.*)', r'<div class="image-container mb-4"><img src="\1" alt="\2" class="responsive-image"></div>', content, flags=re.UNICODE)
-
-        # code タグの置換
-        content = re.sub(r'#code\s*(.*?)<:>(.*?)(?=#|\Z)', r'<div class="copyable mb-4"><p>\1</p><pre><code>\2</code></pre><button onclick="copyToClipboard(this)" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded">コピー</button></div>', content, flags=re.DOTALL | re.UNICODE)
-
-        # strong タグの置換
-        content = re.sub(r'#strong\s*(.*?)<:>(.*)', r'<div class="note mb-4"><strong>\1</strong> \2</div>', content, flags=re.UNICODE)
+            return content
 
         # 変換後の要素をHTML内容に反映
-        output_content = html_content.replace(here_match.group(0), content)
+        processed_content = process_tags(content)
+        output_content = html_content.replace(here_match.group(0), processed_content)
 
         new_file_path = os.path.splitext(file_path)[0] + '.html'
         with open(new_file_path, 'w', encoding='utf-8') as new_file:
