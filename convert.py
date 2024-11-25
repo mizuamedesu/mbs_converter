@@ -474,6 +474,13 @@ class ContentConverter:
             r'<code class="bg-gray-100 rounded-lg p-1">\1</code>',
             html
         )
+
+        # Add classes to links
+        html = re.sub(
+            r'<a href="(.*?)">(.*?)</a>',
+            r'<a href="\1" class="text-blue-600 hover:underline">\2</a>',
+            html
+        )
         
         return html
 
