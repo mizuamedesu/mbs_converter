@@ -10,6 +10,7 @@ from urllib.parse import urlparse  # For parsing URLs
 # HTML template is kept directly within the script
 HTML_TEMPLATE = '''<!DOCTYPE html>
 <html lang="ja">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,7 +20,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     <meta property="og:url" content="{og_url}" />
     <meta name="twitter:card" content="summary_large_image" />
     <title>{title}</title>
-    <!-- Tailwind CSS configuration -->
     <script>
       tailwind.config = {{
         safelist: [
@@ -39,11 +39,11 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
         body {{
             font-family: 'Noto Sans JP', sans-serif;
+            font-size: 14px;
         }}
         .copyable {{
             background: #f3f4f6;
@@ -79,17 +79,20 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             display: flex;
             justify-content: center;
             margin-top: 20px;
+            transform-origin: center;
+            transform: scale(0.9);
         }}
         .share-button {{
             background: #edf2f7;
             color: #1a202c;
-            padding: 8px;
+            padding: 6px;
             margin: 0 4px;
             border-radius: 9999px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 0.9rem;
         }}
         .share-button i {{
             margin-right: 8px;
@@ -109,15 +112,46 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         .home-button {{
             background: #edf2f7;
             color: #1a202c;
-            padding: 8px;
+            padding: 6px;
             margin: 0 4px;
             border-radius: 9999px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
+            font-size: 0.9rem;
         }}
+        
         @media (max-width: 768px) {{
+            body {{
+                font-size: 14px;
+            }}
+            .max-w-4xl {{
+                width: 92%;
+                margin: 0.75rem auto;
+            }}
+            .p-8 {{
+                padding: 1rem;
+            }}
+            h1 {{
+                font-size: 1.5rem !important;
+                line-height: 2rem !important;
+            }}
+            .text-md {{
+                font-size: 0.875rem;
+            }}
+            #giscus-container {{
+                width: 92%;
+                margin: 0.75rem auto;
+                transform: scale(0.95);
+                transform-origin: top center;
+            }}
+            .share-buttons {{
+                transform: scale(0.85);
+            }}
+            .modal-content {{
+                width: 95%;
+            }}
             .copyable button {{
                 position: static;
                 margin-top: 10px;
@@ -126,13 +160,14 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 overflow-x: auto;
             }}
         }}
+        
         blockquote {{
             background: #fff3cd;
             border-left: 4px solid #ffeeba;
             padding: 10px;
             border-radius: 5px;
-            margin-bottom: 1rem;
-            margin-top: 1rem;
+            margin: 1rem 0;
+            font-size: 0.95rem;
         }}
         pre {{
             background: #f3f4f6;
@@ -140,11 +175,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             border-radius: 5px;
             overflow-x: auto;
             position: relative;
-            margin-bottom: 1rem;
-            margin-top: 1rem;
+            margin: 1rem 0;
+            font-size: 0.9rem;
         }}
         code {{
             font-family: monospace;
+            font-size: 0.9rem;
         }}
         h1, h2, h3 {{
             color: #1a202c;
@@ -152,29 +188,30 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             margin-bottom: 0.75rem;
         }}
         h1 {{
-            font-size: 2.25rem;
-            line-height: 2.5rem;
-        }}
-        h2 {{
-            font-size: 1.875rem;
+            font-size: 2rem;
             line-height: 2.25rem;
         }}
-        h3 {{
+        h2 {{
             font-size: 1.5rem;
             line-height: 2rem;
         }}
+        h3 {{
+            font-size: 1.25rem;
+            line-height: 1.75rem;
+        }}
         ul, ol {{
             margin-left: 1.5rem;
-            margin-top: 1rem;
-            margin-bottom: 1rem;
+            margin: 1rem 0;
         }}
         li {{
             margin-bottom: 0.5rem;
             color: #4a5568;
+            font-size: 0.95rem;
         }}
         p {{
             margin-bottom: 1rem;
             color: #4a5568;
+            font-size: 0.95rem;
         }}
         a {{
             color: #2563eb;
@@ -183,43 +220,39 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         table {{
             border-collapse: collapse;
             width: 100%;
-            margin-bottom: 1rem;
+            margin: 1rem 0;
+            font-size: 0.9rem;
         }}
         th, td {{
             border: 1px solid #e2e8f0;
             padding: 8px;
             text-align: left;
         }}
-
-        /* Modal styles */
         .modal {{
-            display: none; /* Hidden by default */
-            position: fixed; /* Stay in place */
-            z-index: 1000; /* Sit on top */
+            display: none;
+            position: fixed;
+            z-index: 1000;
             left: 0;
             top: 0;
-            width: 100%; /* Full width */
-            height: 100%; /* Full height */
-            overflow: auto; /* Enable scroll if needed */
-            background-color: rgba(0,0,0,0.8); /* Black w/ opacity */
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.8);
             align-items: center;
             justify-content: center;
         }}
-
         .modal-content {{
             position: relative;
             margin: auto;
             max-width: 90%;
             max-height: 90%;
         }}
-
         .modal-content img,
         .modal-content video {{
             width: 100%;
             height: auto;
             border-radius: 8px;
         }}
-
         .close-modal {{
             position: absolute;
             top: 20px;
@@ -229,7 +262,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             font-weight: bold;
             cursor: pointer;
         }}
-
         @media (max-width: 768px) {{
             .close-modal {{
                 top: 10px;
@@ -265,12 +297,30 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 <span>ホーム</span>
             </div>
         </div>
-        <footer class="text-center text-gray-600 mt-12">
-            <p>&copy; 2023~2024 mizuame. All rights reserved.</p>
-        </footer>
     </div>
 
-    <!-- Modal Structure -->
+    <div id="giscus-container" class="mt-12 max-w-4xl mx-auto">
+        <script src="https://giscus.app/client.js"
+                data-repo="mizuamedesu/giscus"
+                data-repo-id="R_kgDONY9v_Q"
+                data-category="Announcements"
+                data-category-id="DIC_kwDONY9v_c4Ck5ot"
+                data-mapping="og:title"
+                data-strict="0"
+                data-reactions-enabled="1"
+                data-emit-metadata="0"
+                data-input-position="top"
+                data-theme="preferred_color_scheme"
+                data-lang="ja"
+                crossorigin="anonymous"
+                async>
+        </script>
+    </div>
+
+    <footer class="text-center text-gray-600 mt-12">
+        <p>&copy; 2023~2024 mizuame. All rights reserved.</p>
+    </footer>
+
     <div id="mediaModal" class="modal">
         <span class="close-modal" onclick="closeModal()">&times;</span>
         <div class="modal-content">
@@ -337,7 +387,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             modalVid.pause();
         }}
 
-        // Close the modal when clicking outside the content
         window.onclick = function(event) {{
             var modal = document.getElementById('mediaModal');
             if (event.target == modal) {{
@@ -352,7 +401,7 @@ class ContentConverter:
     def __init__(self):
         self.today = datetime.today()
         self.base_url = "https://mizuame.works/blog"
-        
+
     def get_metadata(self, content: str) -> Dict[str, Any]:
         """Extract metadata (title and description) from content"""
         metadata = {
@@ -361,15 +410,15 @@ class ContentConverter:
             'og_image': f'{self.base_url}/Card/Card_{self.today.strftime("%Y-%m-%d")}.png',
             'og_url': f'{self.base_url}/{self.today.strftime("%Y-%m-%d")}/index.html'
         }
-        
+
         title_match = re.search(r'#title\s*(.*)', content)
         if title_match:
             metadata['title'] = title_match.group(1).strip()
-            
+
         desc_match = re.search(r'#description\s*(.*)', content)
         if desc_match:
             metadata['description'] = desc_match.group(1).strip()
-            
+
         return metadata
 
     def download_media(self, content: str, file_dir: str) -> str:
@@ -380,7 +429,7 @@ class ContentConverter:
             src = match.group(2)
             parsed_url = urlparse(src)
             filename = os.path.basename(parsed_url.path)
-            
+
             # Check if the URL is absolute
             if parsed_url.scheme in ('http', 'https'):
                 # Handle potential duplicate filenames
@@ -390,7 +439,7 @@ class ContentConverter:
                     name, ext = os.path.splitext(filename)
                     local_filename = f"{name}_{counter}{ext}"
                     counter += 1
-                
+
                 try:
                     # Download the file
                     response = requests.get(src, stream=True)
@@ -406,7 +455,7 @@ class ContentConverter:
                     new_src = src  # Keep the original URL if download fails
             else:
                 new_src = src  # Keep the original src if it's not an absolute URL
-                
+
             # Return the modified markdown image/video link
             return f'![{alt_text}]({new_src})'
 
@@ -421,13 +470,13 @@ class ContentConverter:
         # Remove metadata first
         content = re.sub(r'#title\s*.*?\n', '', content)
         content = re.sub(r'#description\s*.*?\n', '', content)
-        
+
         # Download media and replace URLs
         content = self.download_media(content, file_dir)
-        
+
         # Convert markdown to HTML with nl2br extension to preserve line breaks
         html = markdown.markdown(content, extensions=['fenced_code', 'tables', 'nl2br'])
-        
+
         # Add copy button to code blocks
         html = re.sub(
             r'(<pre><code.*?>)(.*?)(</code></pre>)',
@@ -437,7 +486,7 @@ class ContentConverter:
             html,
             flags=re.DOTALL
         )
-        
+
         # Add classes to headings WITHOUT onclick
         html = re.sub(
             r'<h1>(.*?)</h1>',
@@ -454,7 +503,7 @@ class ContentConverter:
             r'<h3 class="text-2xl font-bold text-gray-800 mb-4">\1</h3>',
             html
         )
-        
+
         # Add classes to blockquotes
         html = re.sub(
             r'<blockquote>(.*?)</blockquote>',
@@ -462,7 +511,7 @@ class ContentConverter:
             html,
             flags=re.DOTALL
         )
-        
+
         # Add classes to lists
         html = re.sub(
             r'<ul>',
@@ -474,21 +523,21 @@ class ContentConverter:
             r'<ol class="list-decimal list-inside mb-4">',
             html
         )
-        
+
         # Add classes to list items
         html = re.sub(
             r'<li>(.*?)</li>',
             r'<li class="mb-2 text-gray-700">\1</li>',
             html
         )
-        
+
         # Add classes to paragraphs
         html = re.sub(
             r'<p>(.*?)</p>',
             r'<p class="text-gray-700 mb-4">\1</p>',
             html
         )
-        
+
         # Handle images and videos
         def replace_media(match):
             alt_text = match.group(1)
@@ -512,7 +561,7 @@ class ContentConverter:
             replace_media,
             html
         )
-        
+
         # Add classes to tables
         html = re.sub(
             r'<table>',
@@ -529,7 +578,7 @@ class ContentConverter:
             r'<td class="px-4 py-2 border">',
             html
         )
-        
+
         # Add classes to code blocks
         html = re.sub(
             r'<code>(.*?)</code>',
@@ -543,7 +592,7 @@ class ContentConverter:
             r'<a href="\1" class="text-blue-600 hover:underline">\2</a>',
             html
         )
-        
+
         return html
 
     def convert_file(self, file_path: str) -> Optional[str]:
@@ -551,16 +600,16 @@ class ContentConverter:
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 content = file.read()
-                
+
             # Get metadata
             metadata = self.get_metadata(content)
-            
+
             # Get the directory of the Markdown file
             file_dir = os.path.dirname(file_path)
-            
+
             # Convert content
             converted_content = self.convert_markdown(content, file_dir)
-            
+
             # Generate complete HTML
             html_output = HTML_TEMPLATE.format(
                 title=metadata['title'],
@@ -569,16 +618,16 @@ class ContentConverter:
                 og_url=metadata['og_url'],
                 content=converted_content
             )
-            
+
             # Save the output
             output_dir = file_dir
             output_filename = 'index.html'
             output_path = os.path.join(output_dir, output_filename)
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(html_output)
-                
+
             return output_path
-                
+
         except Exception as e:
             print("Error converting file:")
             traceback.print_exc()  # Display stack trace
@@ -586,19 +635,19 @@ class ContentConverter:
 
 def main():
     converter = ContentConverter()
-    
+
     while True:
         file_path = input("変換するファイル(.md)のパスを入力してください: ")
         file_path = file_path.replace('\\', '/')
-        
+
         if not os.path.isfile(file_path):
             print(f"Error: File '{file_path}' does not exist.")
             continue
-            
+
         if not file_path.endswith('.md'):
             print("Error: Unsupported file format. Please provide a .md file.")
             continue
-            
+
         output_path = converter.convert_file(file_path)
         if output_path:
             print(f"変換が完了しました。出力ファイル: {output_path}")
