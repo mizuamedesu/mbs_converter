@@ -4,6 +4,8 @@ from datetime import datetime
 import markdown
 from typing import Optional, Dict, Any
 import traceback  # For displaying exception stack traces
+import requests  # For downloading files
+from urllib.parse import urlparse  # For parsing URLs
 
 # HTML template is kept directly within the script
 HTML_TEMPLATE = '''<!DOCTYPE html>
@@ -370,14 +372,61 @@ class ContentConverter:
             
         return metadata
 
-    def convert_markdown(self, content: str) -> str:
+    def download_media(self, content: str, file_dir: str) -> str:
+        """Download images and videos from absolute URLs and replace with relative paths"""
+        def replace_media_link(match):
+            full_match = match.group(0)
+            alt_text = match.group(1)
+            src = match.group(2)
+            parsed_url = urlparse(src)
+            filename = os.path.basename(parsed_url.path)
+            
+            # Check if the URL is absolute
+            if parsed_url.scheme in ('http', 'https'):
+                # Handle potential duplicate filenames
+                local_filename = filename
+                counter = 1
+                while os.path.exists(os.path.join(file_dir, local_filename)):
+                    name, ext = os.path.splitext(filename)
+                    local_filename = f"{name}_{counter}{ext}"
+                    counter += 1
+                
+                try:
+                    # Download the file
+                    response = requests.get(src, stream=True)
+                    response.raise_for_status()
+                    with open(os.path.join(file_dir, local_filename), 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    print(f"Downloaded: {src} -> {local_filename}")
+                    # Replace the URL with the local filename
+                    new_src = local_filename
+                except Exception as e:
+                    print(f"Failed to download {src}: {e}")
+                    new_src = src  # Keep the original URL if download fails
+            else:
+                new_src = src  # Keep the original src if it's not an absolute URL
+                
+            # Return the modified markdown image/video link
+            return f'![{alt_text}]({new_src})'
+
+        # Pattern to find markdown image syntax ![alt_text](src)
+        pattern = r'!\[(.*?)\]\((.*?)\)'
+        content = re.sub(pattern, replace_media_link, content)
+
+        return content
+
+    def convert_markdown(self, content: str, file_dir: str) -> str:
         """Convert Markdown content to HTML with custom styling and video support"""
         # Remove metadata first
         content = re.sub(r'#title\s*.*?\n', '', content)
         content = re.sub(r'#description\s*.*?\n', '', content)
         
-        # Convert markdown to HTML
-        html = markdown.markdown(content, extensions=['fenced_code', 'tables'])
+        # Download media and replace URLs
+        content = self.download_media(content, file_dir)
+        
+        # Convert markdown to HTML with nl2br extension to preserve line breaks
+        html = markdown.markdown(content, extensions=['fenced_code', 'tables', 'nl2br'])
         
         # Add copy button to code blocks
         html = re.sub(
@@ -506,12 +555,11 @@ class ContentConverter:
             # Get metadata
             metadata = self.get_metadata(content)
             
-            # Convert content based on file extension
-            if file_path.endswith('.md'):
-                converted_content = self.convert_markdown(content)
-            else:
-                print(f"Unsupported file format: {file_path}")
-                return None
+            # Get the directory of the Markdown file
+            file_dir = os.path.dirname(file_path)
+            
+            # Convert content
+            converted_content = self.convert_markdown(content, file_dir)
             
             # Generate complete HTML
             html_output = HTML_TEMPLATE.format(
@@ -523,7 +571,9 @@ class ContentConverter:
             )
             
             # Save the output
-            output_path = os.path.splitext(file_path)[0] + '.html'
+            output_dir = file_dir
+            output_filename = 'index.html'
+            output_path = os.path.join(output_dir, output_filename)
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(html_output)
                 
