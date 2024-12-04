@@ -1,6 +1,5 @@
 import os
 import re
-import requests  # 画像をダウンロードするために追加
 from datetime import datetime
 import markdown
 from typing import Optional, Dict, Any
@@ -371,163 +370,8 @@ class ContentConverter:
             
         return metadata
 
-<<<<<<< HEAD
     def convert_markdown(self, content: str) -> str:
         """Convert Markdown content to HTML with custom styling and video support"""
-=======
-    def download_image(self, img_url: str, output_dir: str) -> str:
-        """Download image from URL and save it to the output directory"""
-        try:
-            # 画像ファイル名をURLから取得
-            filename = os.path.basename(img_url)
-            local_path = os.path.join(output_dir, filename)
-            
-            # 既に画像が存在する場合は再ダウンロードしない
-            if not os.path.isfile(local_path):
-                # 画像をダウンロード
-                response = requests.get(img_url)
-                response.raise_for_status()
-                
-                with open(local_path, 'wb') as f:
-                    f.write(response.content)
-                
-                print(f"画像をダウンロードしました: {local_path}")
-            else:
-                print(f"画像は既に存在します: {local_path}")
-            
-            return filename  # HTML内でのパスを更新するためにファイル名を返す
-        except Exception as e:
-            print(f"Error downloading image {img_url}: {str(e)}")
-            return img_url  # ダウンロードに失敗した場合は元のURLを返す
-
-    def process_images(self, html_content: str, output_dir: str) -> str:
-        """Find image tags with remote URLs, download images, and update src attributes"""
-        def replace_src(match):
-            src = match.group(1)
-            if src.startswith('http://') or src.startswith('https://'):
-                # 画像をダウンロードしてローカルに保存
-                filename = self.download_image(src, output_dir)
-                return f'src="{filename}"'
-            else:
-                return f'src="{src}"'
-        
-        # imgタグのsrc属性を処理
-        html_content = re.sub(r'src="(.*?)"', replace_src, html_content)
-        return html_content
-
-    def convert_mbs(self, content: str, output_dir: str) -> str:
-        """Convert MBS format content to HTML"""
-        def process_tags(content: str) -> str:
-            # Remove metadata tags first
-            content = re.sub(r'#title\s*.*?\n', '', content)
-            content = re.sub(r'#description\s*.*?\n', '', content)
-            
-            # Process remaining tags
-            tags = re.findall(r'(#\w+(?:\(.*?\))?)(.*?)(?=#\w+|$)', content, re.DOTALL)
-            
-            for tag, text in tags:
-                if tag.startswith('#h1'):
-                    content = content.replace(f"{tag}{text}", 
-                        f'<h1 class="text-4xl font-bold text-gray-800 mb-4">{text.strip()}</h1>', 1)
-                elif tag.startswith('#h2'):
-                    content = content.replace(f"{tag}{text}", 
-                        f'<h2 class="text-3xl font-bold text-gray-800 mb-4">{text.strip()}</h2>', 1)
-                elif tag.startswith('#text'):
-                    processed_text = re.sub(r'<:>(.*?)<:>', 
-                        r'<b class="font-bold text-blue-600">\1</b>', text.strip())
-                    content = content.replace(f"{tag}{text}", 
-                        f'<p class="text-gray-700 mb-4">{processed_text}</p>', 1)
-                elif tag.startswith('#code'):
-                    try:
-                        title, code = text.split('<:>', 1)
-                        content = content.replace(f"{tag}{text}", 
-                            f'<div class="copyable mb-4"><p>{title.strip()}</p><pre><code>{code.strip()}</code></pre>'
-                            f'<button onclick="copyToClipboard(this)" class="bg-blue-600 hover:bg-blue-700 text-white '
-                            f'font-bold py-1 px-3 rounded">コピー</button></div>', 1)
-                    except ValueError:
-                        print("Error: #codeタグの内容が不正です。'<:>'で区切られている必要があります。")
-                elif tag.startswith('#img'):
-                    try:
-                        src, alt = text.strip().split('<:>')
-                        # 画像のURLをダウンロードしてローカルに保存
-                        if src.startswith('http://') or src.startswith('https://'):
-                            filename = self.download_image(src, output_dir)
-                            src = filename
-                        content = content.replace(f"{tag}{text}", 
-                            f'<div class="image-container mb-4"><img src="{src}" alt="{alt}" class="responsive-image"></div>', 1)
-                    except ValueError:
-                        print("Error: #imgタグの内容が不正です。'<:>'で区切られている必要があります。")
-                elif tag.startswith('#strong'):
-                    try:
-                        title, body = text.strip().split('<:>')
-                        content = content.replace(f"{tag}{text}", 
-                            f'<div class="note mb-4"><strong>{title}</strong> {body}</div>', 1)
-                    except ValueError:
-                        print("Error: #strongタグの内容が不正です。'<:>'で区切られている必要があります。")
-                elif tag.startswith('#blockquote'):
-                    content = content.replace(f"{tag}{text}", 
-                        f'<blockquote class="blockquote mb-4">{text.strip()}</blockquote>', 1)
-                elif tag.startswith('#table'):
-                    table_html = self.convert_table(text.strip())
-                    if table_html:
-                        content = content.replace(f"{tag}{text}", table_html, 1)
-                else:
-                    print(f"Warning: 未知のタグ '{tag}' が検出されました。")
-    
-            # Process link tags
-            content = re.sub(r'<a>(.*?)<:>(.*?)<a>', 
-                r'<a href="\2" class="text-blue-600 hover:underline">\1</a>', content)
-            
-            return content.strip()
-
-        converted_content = process_tags(content)
-        return converted_content
-
-    def convert_table(self, table_text: str) -> Optional[str]:
-        """
-        簡易的なテーブル変換機能。
-        テーブルのフォーマットが適切でない場合はNoneを返す。
-        例:
-        | Header1 | Header2 |
-        |---------|---------|
-        | Cell1   | Cell2   |
-        """
-        try:
-            lines = table_text.split('\n')
-            if len(lines) < 2:
-                print("Error: テーブルの行数が不十分です。")
-                return None
-
-            headers = lines[0].strip().split('|')[1:-1]  # 最初と最後の'|'を除外
-            headers = [header.strip() for header in headers]
-            separator = lines[1]
-            if not re.match(r'^(\|:-+:?\|)+$', separator):
-                print("Error: テーブルのセパレータが不正です。")
-                return None
-
-            rows = lines[2:]
-            table_html = '<table class="min-w-full table-auto mb-4 border">\n<thead>\n<tr>'
-            for header in headers:
-                table_html += f'<th class="px-4 py-2 border">{header}</th>'
-            table_html += '</tr>\n</thead>\n<tbody>\n'
-
-            for row in rows:
-                cells = row.strip().split('|')[1:-1]  # 最初と最後の'|'を除外
-                cells = [cell.strip() for cell in cells]
-                table_html += '<tr>'
-                for cell in cells:
-                    table_html += f'<td class="px-4 py-2 border">{cell}</td>'
-                table_html += '</tr>\n'
-
-            table_html += '</tbody>\n</table>'
-            return table_html
-        except Exception as e:
-            print(f"Error converting table: {str(e)}")
-            return None
-
-    def convert_markdown(self, content: str, output_dir: str) -> str:
-        """Convert Markdown format content to HTML with custom styling"""
->>>>>>> 3f6c7f45d86a97a12b6ab58361b03062e4fa620c
         # Remove metadata first
         content = re.sub(r'#title\s*.*?\n', '', content)
         content = re.sub(r'#description\s*.*?\n', '', content)
@@ -650,9 +494,6 @@ class ContentConverter:
             r'<a href="\1" class="text-blue-600 hover:underline">\2</a>',
             html
         )
-
-        # Return the HTML with images processed
-        html = self.process_images(html, output_dir)
         
         return html
 
@@ -665,19 +506,9 @@ class ContentConverter:
             # Get metadata
             metadata = self.get_metadata(content)
             
-            # 出力ディレクトリを取得
-            output_dir = os.path.dirname(os.path.abspath(file_path))
-            
             # Convert content based on file extension
-<<<<<<< HEAD
             if file_path.endswith('.md'):
                 converted_content = self.convert_markdown(content)
-=======
-            if file_path.endswith('.mbs'):
-                converted_content = self.convert_mbs(content, output_dir)
-            elif file_path.endswith('.md'):
-                converted_content = self.convert_markdown(content, output_dir)
->>>>>>> 3f6c7f45d86a97a12b6ab58361b03062e4fa620c
             else:
                 print(f"Unsupported file format: {file_path}")
                 return None
@@ -690,9 +521,6 @@ class ContentConverter:
                 og_url=metadata['og_url'],
                 content=converted_content
             )
-
-            # 画像を処理してHTMLを更新
-            html_output = self.process_images(html_output, output_dir)
             
             # Save the output
             output_path = os.path.splitext(file_path)[0] + '.html'
