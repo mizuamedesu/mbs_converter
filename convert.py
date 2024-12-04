@@ -3,8 +3,9 @@ import re
 from datetime import datetime
 import markdown
 from typing import Optional, Dict, Any
+import traceback  # For displaying exception stack traces
 
-# HTMLテンプレートを直接スクリプト内に保持
+# HTML template is kept directly within the script
 HTML_TEMPLATE = '''<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -16,7 +17,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     <meta property="og:url" content="{og_url}" />
     <meta name="twitter:card" content="summary_large_image" />
     <title>{title}</title>
-    <!-- Tailwind CSSの設定を追加 -->
+    <!-- Tailwind CSS configuration -->
     <script>
       tailwind.config = {{
         safelist: [
@@ -29,13 +30,14 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
           'max-w-4xl', 'text-center', 'text-md', 'text-gray-600', 'bg-white',
           'p-8', 'rounded-lg', 'shadow', 'mb-12', 'bg-blue-50', 'hover:underline',
           'text-blue-600', 'mt-12', 'justify-center', 'flex', 'items-center',
-          'fab', 'fa-twitter', 'fa-facebook-f', 'fas', 'fa-home'
+          'fab', 'fa-twitter', 'fa-facebook-f', 'fas', 'fa-home', 'cursor-pointer',
+          'responsive-media', 'video-container'
         ],
       }}
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
-    <!-- Font Awesomeのリンクを修正 -->
+    <!-- Corrected Font Awesome link -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
         body {{
@@ -95,6 +97,10 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             text-align: center;
         }}
         .responsive-image {{
+            max-width: 100%;
+            height: auto;
+        }}
+        .responsive-media {{
             max-width: 100%;
             height: auto;
         }}
@@ -182,6 +188,53 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             padding: 8px;
             text-align: left;
         }}
+
+        /* Modal styles */
+        .modal {{
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1000; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgba(0,0,0,0.8); /* Black w/ opacity */
+            align-items: center;
+            justify-content: center;
+        }}
+
+        .modal-content {{
+            position: relative;
+            margin: auto;
+            max-width: 90%;
+            max-height: 90%;
+        }}
+
+        .modal-content img,
+        .modal-content video {{
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }}
+
+        .close-modal {{
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }}
+
+        @media (max-width: 768px) {{
+            .close-modal {{
+                top: 10px;
+                right: 20px;
+                font-size: 30px;
+            }}
+        }}
     </style>
 </head>
 <body class="bg-blue-50">
@@ -214,6 +267,19 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             <p>&copy; 2023~2024 mizuame. All rights reserved.</p>
         </footer>
     </div>
+
+    <!-- Modal Structure -->
+    <div id="mediaModal" class="modal">
+        <span class="close-modal" onclick="closeModal()">&times;</span>
+        <div class="modal-content">
+            <img id="modalImage" src="" alt="" style="display: none;">
+            <video id="modalVideo" controls style="display: none;">
+                <source id="modalVideoSource" src="" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+    </div>
+
     <script>
         function copyToClipboard(button) {{
             var code = button.previousElementSibling.innerText;
@@ -240,6 +306,41 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             var url = encodeURIComponent(document.location.href);
             var facebookUrl = "https://www.facebook.com/sharer/sharer.php?u=" + url;
             window.open(facebookUrl, '_blank');
+        }}
+
+        function openModal(src, type) {{
+            var modal = document.getElementById('mediaModal');
+            var modalImg = document.getElementById('modalImage');
+            var modalVid = document.getElementById('modalVideo');
+            var modalVidSrc = document.getElementById('modalVideoSource');
+
+            if (type === 'image') {{
+                modalImg.src = src;
+                modalImg.style.display = 'block';
+                modalVid.style.display = 'none';
+            }} else if (type === 'video') {{
+                modalVidSrc.src = src;
+                modalVid.load();
+                modalVid.style.display = 'block';
+                modalImg.style.display = 'none';
+            }}
+
+            modal.style.display = 'flex';
+        }}
+
+        function closeModal() {{
+            var modal = document.getElementById('mediaModal');
+            var modalVid = document.getElementById('modalVideo');
+            modal.style.display = 'none';
+            modalVid.pause();
+        }}
+
+        // Close the modal when clicking outside the content
+        window.onclick = function(event) {{
+            var modal = document.getElementById('mediaModal');
+            if (event.target == modal) {{
+                closeModal();
+            }}
         }}
     </script>
 </body>
@@ -269,113 +370,8 @@ class ContentConverter:
             
         return metadata
 
-    def convert_mbs(self, content: str) -> str:
-        """Convert MBS format content to HTML"""
-        def process_tags(content: str) -> str:
-            # Remove metadata tags first
-            content = re.sub(r'#title\s*.*?\n', '', content)
-            content = re.sub(r'#description\s*.*?\n', '', content)
-            
-            # Process remaining tags
-            tags = re.findall(r'(#\w+(?:\(.*?\))?)(.*?)(?=#\w+|$)', content, re.DOTALL)
-            
-            for tag, text in tags:
-                if tag.startswith('#h1'):
-                    content = content.replace(f"{tag}{text}", 
-                        f'<h1 class="text-4xl font-bold text-gray-800 mb-4">{text.strip()}</h1>', 1)
-                elif tag.startswith('#h2'):
-                    content = content.replace(f"{tag}{text}", 
-                        f'<h2 class="text-3xl font-bold text-gray-800 mb-4">{text.strip()}</h2>', 1)
-                elif tag.startswith('#text'):
-                    processed_text = re.sub(r'<:>(.*?)<:>', 
-                        r'<b class="font-bold text-blue-600">\1</b>', text.strip())
-                    content = content.replace(f"{tag}{text}", 
-                        f'<p class="text-gray-700 mb-4">{processed_text}</p>', 1)
-                elif tag.startswith('#code'):
-                    try:
-                        title, code = text.split('<:>', 1)
-                        content = content.replace(f"{tag}{text}", 
-                            f'<div class="copyable mb-4"><p>{title.strip()}</p><pre><code>{code.strip()}</code></pre>'
-                            f'<button onclick="copyToClipboard(this)" class="bg-blue-600 hover:bg-blue-700 text-white '
-                            f'font-bold py-1 px-3 rounded">コピー</button></div>', 1)
-                    except ValueError:
-                        print("Error: #codeタグの内容が不正です。'<:>'で区切られている必要があります。")
-                elif tag.startswith('#img'):
-                    try:
-                        src, alt = text.strip().split('<:>')
-                        content = content.replace(f"{tag}{text}", 
-                            f'<div class="image-container mb-4"><img src="{src}" alt="{alt}" class="responsive-image"></div>', 1)
-                    except ValueError:
-                        print("Error: #imgタグの内容が不正です。'<:>'で区切られている必要があります。")
-                elif tag.startswith('#strong'):
-                    try:
-                        title, body = text.strip().split('<:>')
-                        content = content.replace(f"{tag}{text}", 
-                            f'<div class="note mb-4"><strong>{title}</strong> {body}</div>', 1)
-                    except ValueError:
-                        print("Error: #strongタグの内容が不正です。'<:>'で区切られている必要があります。")
-                elif tag.startswith('#blockquote'):
-                    content = content.replace(f"{tag}{text}", 
-                        f'<blockquote class="blockquote mb-4">{text.strip()}</blockquote>', 1)
-                elif tag.startswith('#table'):
-                    table_html = self.convert_table(text.strip())
-                    if table_html:
-                        content = content.replace(f"{tag}{text}", table_html, 1)
-                else:
-                    print(f"Warning: 未知のタグ '{tag}' が検出されました。")
-    
-            # Process link tags
-            content = re.sub(r'<a>(.*?)<:>(.*?)<a>', 
-                r'<a href="\2" class="text-blue-600 hover:underline">\1</a>', content)
-            
-            return content.strip()
-
-        return process_tags(content)
-
-    def convert_table(self, table_text: str) -> Optional[str]:
-        """
-        簡易的なテーブル変換機能。
-        テーブルのフォーマットが適切でない場合はNoneを返す。
-        例:
-        | Header1 | Header2 |
-        |---------|---------|
-        | Cell1   | Cell2   |
-        """
-        try:
-            lines = table_text.split('\n')
-            if len(lines) < 2:
-                print("Error: テーブルの行数が不十分です。")
-                return None
-
-            headers = lines[0].strip().split('|')[1:-1]  # 最初と最後の'|'を除外
-            headers = [header.strip() for header in headers]
-            separator = lines[1]
-            if not re.match(r'^(\|:-+:?\|)+$', separator):
-                print("Error: テーブルのセパレータが不正です。")
-                return None
-
-            rows = lines[2:]
-            table_html = '<table class="min-w-full table-auto mb-4 border">\n<thead>\n<tr>'
-            for header in headers:
-                table_html += f'<th class="px-4 py-2 border">{header}</th>'
-            table_html += '</tr>\n</thead>\n<tbody>\n'
-
-            for row in rows:
-                cells = row.strip().split('|')[1:-1]  # 最初と最後の'|'を除外
-                cells = [cell.strip() for cell in cells]
-                table_html += '<tr>'
-                for cell in cells:
-                    table_html += f'<td class="px-4 py-2 border">{cell}</td>'
-                table_html += '</tr>\n'
-
-            table_html += '</tbody>\n</table>'
-            return table_html
-        except Exception as e:
-            print(f"Error converting table: {str(e)}")
-            return None
-
     def convert_markdown(self, content: str) -> str:
-        """Convert Markdown format content to HTML with custom styling"""
+        """Convert Markdown content to HTML with custom styling and video support"""
         # Remove metadata first
         content = re.sub(r'#title\s*.*?\n', '', content)
         content = re.sub(r'#description\s*.*?\n', '', content)
@@ -393,7 +389,7 @@ class ContentConverter:
             flags=re.DOTALL
         )
         
-        # Add classes to h1, h2, h3 tags
+        # Add classes to headings WITHOUT onclick
         html = re.sub(
             r'<h1>(.*?)</h1>',
             r'<h1 class="text-4xl font-bold text-gray-800 mb-4">\1</h1>',
@@ -418,7 +414,7 @@ class ContentConverter:
             flags=re.DOTALL
         )
         
-        # Add classes to ul and ol tags
+        # Add classes to lists
         html = re.sub(
             r'<ul>',
             r'<ul class="list-disc list-inside mb-4">',
@@ -430,7 +426,7 @@ class ContentConverter:
             html
         )
         
-        # Add classes to li tags
+        # Add classes to list items
         html = re.sub(
             r'<li>(.*?)</li>',
             r'<li class="mb-2 text-gray-700">\1</li>',
@@ -444,10 +440,27 @@ class ContentConverter:
             html
         )
         
-        # Add classes to images
+        # Handle images and videos
+        def replace_media(match):
+            alt_text = match.group(1)
+            src = match.group(2)
+            ext = os.path.splitext(src)[1].lower()
+            if ext == '.mp4':
+                # Embed the video directly in the page
+                return f'''
+<div class="video-container mb-4">
+    <video controls class="responsive-media">
+        <source src="{src}" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+</div>
+                '''
+            else:
+                return f'<img src="{src}" alt="{alt_text}" class="responsive-media mb-4 cursor-pointer" onclick="openModal(\'{src}\', \'image\')"/>'
+
         html = re.sub(
-            r'<img(.*?)/>',
-            r'<img\1 class="responsive-image mb-4"/>',
+            r'<img\s+alt="(.*?)"\s+src="(.*?)"\s*/?>',
+            replace_media,
             html
         )
         
@@ -485,7 +498,7 @@ class ContentConverter:
         return html
 
     def convert_file(self, file_path: str) -> Optional[str]:
-        """Convert file to HTML based on its extension"""
+        """Convert Markdown file to HTML"""
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 content = file.read()
@@ -494,9 +507,7 @@ class ContentConverter:
             metadata = self.get_metadata(content)
             
             # Convert content based on file extension
-            if file_path.endswith('.mbs'):
-                converted_content = self.convert_mbs(content)
-            elif file_path.endswith('.md'):
+            if file_path.endswith('.md'):
                 converted_content = self.convert_markdown(content)
             else:
                 print(f"Unsupported file format: {file_path}")
@@ -519,22 +530,23 @@ class ContentConverter:
             return output_path
                 
         except Exception as e:
-            print(f"Error converting file: {str(e)}")
+            print("Error converting file:")
+            traceback.print_exc()  # Display stack trace
             return None
 
 def main():
     converter = ContentConverter()
     
     while True:
-        file_path = input("変換するファイル(.mbs または .md)のパスを入力してください: ")
+        file_path = input("変換するファイル(.md)のパスを入力してください: ")
         file_path = file_path.replace('\\', '/')
         
         if not os.path.isfile(file_path):
             print(f"Error: File '{file_path}' does not exist.")
             continue
             
-        if not (file_path.endswith('.mbs') or file_path.endswith('.md')):
-            print("Error: Unsupported file format. Please provide .mbs or .md file.")
+        if not file_path.endswith('.md'):
+            print("Error: Unsupported file format. Please provide a .md file.")
             continue
             
         output_path = converter.convert_file(file_path)
