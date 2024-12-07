@@ -38,7 +38,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
       }}
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="mizuame" data-description="Support me on Buy me a coffee!" data-message="良ければ寄付してください！！！" data-color="#5F7FFF" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
+    <script data-name="BMC-Widget" data-cfasync="false" src="https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js" data-id="mizuame" data-description="Support me on Buy me a coffee!" data-message="コーヒー買って下さい" data-color="#5F7FFF" data-position="Right" data-x_margin="18" data-y_margin="18"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <style>
